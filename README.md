@@ -168,9 +168,10 @@ The system emphasizes:
 
 ---
 
-## Authors Information
+## Author Information
 
-
+**Pranav Ram**
+GitHub: [@Pranav-Ram-R](https://github.com/Pranav-Ram-R)
 
 ---
 
