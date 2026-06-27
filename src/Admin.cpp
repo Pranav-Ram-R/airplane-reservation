@@ -5,6 +5,11 @@
 #include <iostream>
 #include <iomanip>
 
+// Admin entry point. Note the design: Admin holds NO data of its own — it receives a
+// BookingSystem& and reads/seeds everything through that single shared object
+// (dependency injection by reference). The method does three things in sequence:
+//   1) seed flights for the queried route, 2) filter to this session's relevant flights,
+//   3) run an interactive report menu over them.
 void Admin::showMenu(BookingSystem& system) {
     std::string src, dst, date;
     std::cout << "Enter Source City: ";
@@ -39,12 +44,14 @@ void Admin::showMenu(BookingSystem& system) {
         system.addFlight(f);
     }
 
-    // Step 2: Filter flights for this admin session
+    // Step 2: Filter flights for this admin session.
+    // getFlights() returns a const& (no copy); we then copy only the matching flights
+    // into a local working set so the menu below iterates just this route/date.
     const auto& allFlights = system.getFlights();
     std::vector<Flight> relevantFlights;
     for (const auto& f : allFlights) {
         if (f.source == src && f.destination == dst && f.date == date) {
-            relevantFlights.push_back(f);
+            relevantFlights.push_back(f);   // snapshot copy for this session
         }
     }
 
@@ -72,14 +79,16 @@ void Admin::showMenu(BookingSystem& system) {
             }
         }
 
-        else if (choice == 2) {
+        else if (choice == 2) {   // View all bookings, per flight
             for (const auto& f : relevantFlights) {
                 const auto& bookings = system.getBookings();
-                auto it = bookings.find(f.flightID);
+                auto it = bookings.find(f.flightID);   // O(log n) map lookup
                 if (it != bookings.end() && !it->second.empty()) {
                     std::cout << "\nFlight ID: " << f.flightID << "\n";
                     for (const auto& p : it->second) {
                         auto seat = system.getPassengerSeat(f.flightID, p.passportNumber);
+                        // Ternary: format "12C" if a seat was found, else "N/A".
+                        // seat.first != -1 tests against the {-1,-1} not-found sentinel.
                         std::string seatStr = (seat.first != -1)
                             ? std::to_string(seat.first + 1) + static_cast<char>('A' + seat.second)
                             : "N/A";
@@ -96,9 +105,12 @@ void Admin::showMenu(BookingSystem& system) {
             }
         }
 
-        else if (choice == 3) {
+        else if (choice == 3) {   // Occupancy stats
             for (const auto& f : relevantFlights) {
                 const auto& bookings = system.getBookings();
+                // .count() returns 0/1 for a map (key present?); guards .at() which would
+                // throw std::out_of_range on a missing key. (operator[] isn't usable on a
+                // const map.) Cast to double so the percentage isn't integer-truncated.
                 int booked = bookings.count(f.flightID) ? bookings.at(f.flightID).size() : 0;
                 int total = f.getTotalSeats();
                 double occupancy = (double)booked / total * 100.0;
@@ -110,10 +122,12 @@ void Admin::showMenu(BookingSystem& system) {
             }
         }
 
-        else if (choice == 4) {
+        else if (choice == 4) {   // Revenue report
             for (const auto& f : relevantFlights) {
                 const auto& bookings = system.getBookings();
                 int count = bookings.count(f.flightID) ? bookings.at(f.flightID).size() : 0;
+                // Simplified revenue = headcount * base fare (ignores dynamic surge pricing
+                // applied at booking time — a known simplification of the report).
                 int fare = getBaseFare(f.source, f.destination);
                 int revenue = count * fare;
 

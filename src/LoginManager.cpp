@@ -6,6 +6,9 @@
 #include <algorithm>
 #include <cctype>
 
+// Validates Aadhaar = exactly 12 characters AND every char is a digit.
+// std::all_of (algorithm) returns true only if the predicate holds for ALL elements.
+// `::isdigit` (leading :: = global-namespace C function) is passed as the predicate.
 bool isValidAadhaar(const std::string& aadhaar) {
     return aadhaar.length() == 12 && std::all_of(aadhaar.begin(), aadhaar.end(), ::isdigit);
 }
@@ -36,15 +39,19 @@ bool LoginManager::loginAsAdmin() {
         return false;
     }
 
+    // Linear scan of the credential file: split each "user,pass" line and compare.
+    // SECURITY CAVEAT (good to acknowledge in interviews): passwords are stored and
+    // compared in PLAINTEXT. A real system would store a salted hash and use a
+    // constant-time comparison to resist timing attacks.
     std::string line;
     while (getline(file, line)) {
         std::stringstream ss(line);
         std::string storedUsername, storedPassword;
-        getline(ss, storedUsername, ',');
-        getline(ss, storedPassword);
+        getline(ss, storedUsername, ',');   // up to the comma = username
+        getline(ss, storedPassword);        // rest of line = password
 
         if (inputUsername == storedUsername && inputPassword == storedPassword) {
-            return true;
+            return true;                    // match found -> authenticated
         }
     }
 

@@ -1,0 +1,13 @@
+# Credentials (kept local only — contains plaintext demo passwords)
+admin_credentials.txt
+
+# Build artifacts
+*.exe
+*.o
+*.obj
+*.out
+airline
+airline_test
+
+# Generated at runtime
+BoardingPass_*.txt
